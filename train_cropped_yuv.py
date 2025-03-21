@@ -30,7 +30,7 @@ def parse_args():
                         help='Path to dataset directory')
     parser.add_argument('--output_dir', type=str, default='/home/daniel/git/carla-driver-data/models/',
                         help='Directory to save outputs')
-    parser.add_argument('--img_size', type=int, nargs=2, default=[640, 480],
+    parser.add_argument('--img_size', type=int, nargs=2, default=[480, 640],
                         help='Output image size after preprocessing (height, width)')
     # Model parameters
     parser.add_argument('--patch_size', type=int, default=32,
@@ -48,7 +48,7 @@ def parse_args():
     # Training parameters
     parser.add_argument('--batch_size', type=int, default=8,
                         help='Batch size for training')
-    parser.add_argument('--epochs', type=int, default=30,
+    parser.add_argument('--epochs', type=int, default=10,
                         help='Number of training epochs')
     parser.add_argument('--lr', type=float, default=1e-4,
                         help='Initial learning rate')
@@ -88,65 +88,31 @@ def set_seed(seed):
 
 # Define preprocessing transform with YUV conversion
 def preprocess_image(img, debug=False, debug_dir=None, idx=0):
-    # Debug: Print initial shape
-    if debug:
-        print(f"Initial shape (C, H, W): {img.shape}")  # torch.Size([3, 480, 640])
-        
-        # Save the original image for comparison
-        original_img = (img.permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
-        cv2.imwrite(os.path.join(debug_dir, f'debug_original_{idx}.png'), 
-                   cv2.cvtColor(original_img, cv2.COLOR_RGB2BGR))
-        
+
     # Initial crop
     img = img[:, 210:480, :]  # Crop to 270x640 (H×W)
-    
-    if debug:
-        print(f"After crop (C, H, W): {img.shape}")
         
-        # Save the cropped image before any other processing
-        cropped_img = (img.permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
-        cv2.imwrite(os.path.join(debug_dir, f'debug_cropped_{idx}.png'), 
-                   cv2.cvtColor(cropped_img, cv2.COLOR_RGB2BGR))
-    
     # Convert tensor to numpy for OpenCV processing (HWC format)
     img_np = img.permute(1, 2, 0).cpu().numpy()  # [H, W, C]
-    
-    if debug:
-        print(f"After permute to numpy (H, W, C): {img_np.shape}")
-        
-        # Save after permute
-        permute_img = (img_np * 255).astype(np.uint8)
-        cv2.imwrite(os.path.join(debug_dir, f'debug_permuted_{idx}.png'), 
-                   cv2.cvtColor(permute_img, cv2.COLOR_RGB2BGR))
-    
+
+    # Scale to [0, 255] and convert to uint8 for OpenCV
+    img_np = (img_np * 255).astype(np.uint8)
+
     # Convert RGB to YUV
     img_yuv = cv2.cvtColor(img_np, cv2.COLOR_RGB2YUV)
-    
+
     if debug:
         print(f"After RGB to YUV (H, W, C): {img_yuv.shape}")
         
-        # Save YUV conversion (note: this won't display properly as RGB)
-        yuv_img = img_yuv.astype(np.uint8)
-        cv2.imwrite(os.path.join(debug_dir, f'debug_yuv_{idx}.png'), yuv_img)
-    
-    # Convert back to RGB
-    img_rgb = cv2.cvtColor(img_yuv, cv2.COLOR_YUV2RGB)
-    
-    if debug:
-        print(f"After YUV to RGB (H, W, C): {img_rgb.shape}")
-        
-        # Save after YUV->RGB conversion
-        rgb_img = (img_rgb * 255).astype(np.uint8) if img_rgb.max() <= 1.0 else img_rgb.astype(np.uint8)
-        cv2.imwrite(os.path.join(debug_dir, f'debug_rgb_{idx}.png'), 
-                   cv2.cvtColor(rgb_img, cv2.COLOR_RGB2BGR))
-    
-    # Convert to PIL for resizing
-    img_pil = transforms.ToPILImage()(img_rgb)
+        # Save YUV conversion (already in [0, 255])
+        cv2.imwrite(os.path.join(debug_dir, f'debug_yuv_{idx}.png'), img_yuv)
+
+    img_pil = transforms.ToPILImage()(img_yuv)
     
     if debug:
         # Save PIL image
         img_pil.save(os.path.join(debug_dir, f'debug_pil_{idx}.png'))
-    
+
     # Resize to original dimensions (480x640) - corrected order
     img_resized = transforms.Resize((480, 640))(img_pil)
     
@@ -167,7 +133,7 @@ def preprocess_image(img, debug=False, debug_dir=None, idx=0):
     
     return img_tensor
 
-
+# Image is already in YUV space at this point ~ loader ?
 def train_epoch(model, loader, optimizer, criterion, device, scaler=None, 
                 grad_accumulation=1, max_grad_norm=1.0, mixed_precision=False, 
                 debug=False, debug_dir=None):
@@ -199,7 +165,9 @@ def train_epoch(model, loader, optimizer, criterion, device, scaler=None,
                 # Print stats to help detect issues
                 print(f"Raw image shape: {raw_img.shape}")
                 print(f"Raw image min, max, mean: {raw_img.min():.3f}, {raw_img.max():.3f}, {raw_img.mean():.3f}")
-                print(f"Raw image has yellow borders: {is_yellow_present(raw_img)}")
+                # print(f"Raw image has yellow borders: {is_yellow_present(raw_img)}")
+                # import sys
+                # sys.exit(0)  # Exit after first batch for debugging
                
 
 
@@ -383,7 +351,7 @@ def main():
         batch_size=args.batch_size,
         val_split=args.val_split,
         test_split=args.test_split,
-        img_size=(480, 640),
+        img_size=args.img_size, 
         seed=args.seed
     )
     
@@ -481,7 +449,7 @@ def main():
                 'train_metrics': train_metrics,
                 'val_metrics': val_metrics,
                 'val_results': val_results
-            }, os.path.join(args.output_dir, 'best_model_640x480_segmented_yuv.pth'))
+            }, os.path.join(args.output_dir, 'best_model_640x480_segmented_yuv_2.pth'))
             
             plot_predictions(
                 val_results['predictions'].flatten(),
@@ -512,7 +480,7 @@ def main():
                 'val_metrics': val_metrics
             }, os.path.join(args.output_dir, f'checkpoint_epoch_{epoch+1}.pth'))
     
-    best_checkpoint = torch.load(os.path.join(args.output_dir, 'best_model_640x480_segmented_yuv.pth'))
+    best_checkpoint = torch.load(os.path.join(args.output_dir, 'best_model_640x480_segmented_yuv_2.pth'))
     model.load_state_dict(best_checkpoint['model_state_dict'])
     
     print(f"\nBest model from epoch {best_epoch+1} with validation loss {best_val_loss:.6f}")
