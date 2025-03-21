@@ -152,10 +152,10 @@ def create_data_loaders(data_dir, batch_size=8, val_split=0.2, test_split=0.1,
     # Define transformations no need in this case, image already in the right size
     # resize_transform = transforms.Resize(img_size)
     
-    normalize = transforms.Normalize(
-        mean=[0.485, 0.456, 0.406],  # ImageNet normalization
-        std=[0.229, 0.224, 0.225]
-    )
+    # normalize = transforms.Normalize(
+    #     mean=[0.485, 0.456, 0.406],  # ImageNet normalization
+    #     std=[0.229, 0.224, 0.225]
+    # )
     
     # Base transforms for all datasets
     # base_transform = transforms.Compose([
@@ -165,8 +165,7 @@ def create_data_loaders(data_dir, batch_size=8, val_split=0.2, test_split=0.1,
     # ])
 
     base_transform = transforms.Compose([
-        transforms.ToTensor(),
-        normalize
+        transforms.ToTensor()
     ])
     
     # Removed augmentation for simplicity
@@ -183,7 +182,7 @@ def create_data_loaders(data_dir, batch_size=8, val_split=0.2, test_split=0.1,
     #     train_transform = base_transform
 
     train_transform = base_transform
-    
+
     # Create datasets
     full_dataset = SteeringAngleDataset(
         data_dir,

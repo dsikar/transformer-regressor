@@ -30,7 +30,7 @@ def parse_args():
                         help='Path to dataset directory')
     parser.add_argument('--output_dir', type=str, default='output',
                         help='Directory to save outputs')
-    parser.add_argument('--img_size', type=int, nargs=2, default=[640, 480],  # Changed to target size after preprocessing
+    parser.add_argument('--img_size', type=int, nargs=2, default=[480, 640],  # Changed to target size after preprocessing
                         help='Output image size after preprocessing (height, width)')
     
     # Model parameters
@@ -95,7 +95,7 @@ def set_seed(seed):
 preprocess = transforms.Compose([
     transforms.Lambda(lambda x: x[:, 210:480, :]),  # Crop top 210 pixels (120px band) and keep up to 480 (270px height remains)
     transforms.ToPILImage(),  # Convert to PIL for resizing
-    transforms.Resize((640, 480)),  # Resize to 640x480
+    transforms.Resize((480, 640)),  # HxW
     transforms.ToTensor(),  # Convert back to tensor
 ])
 
