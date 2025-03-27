@@ -53,7 +53,7 @@ def parse_args():
                         help='Initial learning rate')
     parser.add_argument('--weight_decay', type=float, default=1e-4,
                         help='Weight decay (L2 penalty)')
-    parser.add_argument('--patience', type=int, default=5,
+    parser.add_argument('--patience', type=int, default=20,
                         help='Patience for early stopping')
     parser.add_argument('--val_split', type=float, default=0.2,
                         help='Fraction of data to use for validation')
