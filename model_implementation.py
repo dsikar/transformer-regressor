@@ -150,16 +150,19 @@ def create_data_loaders(data_dir, batch_size=8, val_split=0.2):
     Create training and validation data loaders with appropriate transforms
     """
     # Define transformations
+    # train_transform = transforms.Compose([
+    #     # transforms.RandomHorizontalFlip(p=0.5),  # Flip with 50% probability, will need to negate steering angle
+    #     # transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+    #     transforms.ToTensor() #,
+    #     # transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    # ])
+
     train_transform = transforms.Compose([
-        transforms.RandomHorizontalFlip(p=0.5),  # Flip with 50% probability, will need to negate steering angle
-        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
+        transforms.ToTensor()
+    ])    
     
     val_transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        transforms.ToTensor()
     ])
     
     # Create datasets
@@ -171,7 +174,7 @@ def create_data_loaders(data_dir, batch_size=8, val_split=0.2):
     split = int(np.floor(val_split * dataset_size))
     
     # Shuffle indices
-    np.random.shuffle(indices)
+    # np.random.shuffle(indices)
     train_indices, val_indices = indices[split:], indices[:split]
     
     # Create custom datasets with correct transforms
@@ -182,7 +185,7 @@ def create_data_loaders(data_dir, batch_size=8, val_split=0.2):
     train_loader = DataLoader(
         train_dataset,
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=False,
         num_workers=4,
         pin_memory=True
     )

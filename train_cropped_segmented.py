@@ -25,7 +25,7 @@ def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description='Train Vision Transformer for steering angle prediction')
     # Dataset parameters
-    parser.add_argument('--data_dir', type=str, default="/home/daniel/git/carla-driver-data/scripts/wip/config_640x480_laneid_1/",
+    parser.add_argument('--data_dir', type=str, default="/home/daniel/git/carla-driver-data/scripts/wip/config_640x480_laneid_1_quant/",
                         help='Path to dataset directory')
     parser.add_argument('--output_dir', type=str, default='/home/daniel/git/carla-driver-data/models/',
                         help='Directory to save outputs')
@@ -133,6 +133,7 @@ def preprocess_image(img, debug=False, debug_dir=None, idx=0):
     if debug:
         print(f"After resize and to tensor (C, H, W): {img_tensor.shape}")
         # Save final tensor
+        # images /home/daniel/git/carla-driver-data/models/debug_images 
         final_img = (img_tensor.permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
         cv2.imwrite(os.path.join(debug_dir, f'debug_final_{idx}.png'), 
                     cv2.cvtColor(final_img, cv2.COLOR_RGB2BGR))
@@ -393,7 +394,8 @@ def main():
     best_val_loss = float('inf')
     best_epoch = 0
     patience_counter = 0
-    
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+
     for epoch in range(args.epochs):
         print(f"\nEpoch {epoch+1}/{args.epochs}")
         
@@ -436,6 +438,7 @@ def main():
             best_epoch = epoch
             patience_counter = 0
             
+            
             torch.save({
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
@@ -444,7 +447,7 @@ def main():
                 'train_metrics': train_metrics,
                 'val_metrics': val_metrics,
                 'val_results': val_results
-            }, os.path.join(args.output_dir, 'best_model_640x480_segmented.pth'))  # Updated filename
+            }, os.path.join(args.output_dir, f'best_model_640x480_segmented_{timestamp}.pth'))  # Updated filename with timestamp
             
             plot_predictions(
                 val_results['predictions'].flatten(),
@@ -475,7 +478,8 @@ def main():
                 'val_metrics': val_metrics
             }, os.path.join(args.output_dir, f'checkpoint_epoch_{epoch+1}.pth'))
     
-    best_checkpoint = torch.load(os.path.join(args.output_dir, 'best_model_640x480_segmented.pth'))
+    
+    best_checkpoint = torch.load(os.path.join(args.output_dir, 'best_model_640x480_segmented_{timestamp}.pth'), weights_only=False)
     model.load_state_dict(best_checkpoint['model_state_dict'])
     
     print(f"\nBest model from epoch {best_epoch+1} with validation loss {best_val_loss:.6f}")

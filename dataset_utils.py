@@ -44,7 +44,7 @@ class SteeringAngleDataset(Dataset):
         self.pattern = re.compile(r'.*_steering_([-+]?\d*\.\d+)\.jpg$')
         
         # Load all image paths and extract steering angles
-        for filename in os.listdir(root_dir):
+        for filename in sorted(os.listdir(root_dir)):  # Sort filenames in ascending order
             if filename.endswith('.jpg'):
                 match = self.pattern.match(filename)
                 if match:
@@ -149,41 +149,14 @@ def create_data_loaders(data_dir, batch_size=8, val_split=0.2, test_split=0.1,
     random.seed(seed)
     np.random.seed(seed)
     
-    # Define transformations no need in this case, image already in the right size
-    # resize_transform = transforms.Resize(img_size)
-    
-    # normalize = transforms.Normalize(
-    #     mean=[0.485, 0.456, 0.406],  # ImageNet normalization
-    #     std=[0.229, 0.224, 0.225]
-    # )
-    
-    # Base transforms for all datasets
-    # base_transform = transforms.Compose([
-    #     resize_transform,
-    #     transforms.ToTensor(),
-    #     normalize
-    # ])
-
+    # Define transformations
     base_transform = transforms.Compose([
         transforms.ToTensor()
     ])
     
-    # Removed augmentation for simplicity
-    # Augmentation transforms for training
-    # if augment:
-    #     train_transform = transforms.Compose([
-    #         resize_transform,
-    #         transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
-    #         transforms.RandomAffine(degrees=0, translate=(0.1, 0.1), scale=(0.9, 1.1)),
-    #         transforms.ToTensor(),
-    #         normalize
-    #     ])
-    # else:
-    #     train_transform = base_transform
-
     train_transform = base_transform
 
-    # Create datasets
+    # Create dataset
     full_dataset = SteeringAngleDataset(
         data_dir,
         transform=None,  # No transform here, will be applied in the subset classes
@@ -205,29 +178,37 @@ def create_data_loaders(data_dir, batch_size=8, val_split=0.2, test_split=0.1,
     val_size = int(val_split * dataset_size)
     train_size = dataset_size - val_size - test_size
     
-    # Create random splits
-    train_dataset, val_dataset, test_dataset = random_split(
-        full_dataset, 
-        [train_size, val_size, test_size],
-        generator=torch.Generator().manual_seed(seed)
-    )
-    
-    # Create dataset wrappers with transforms
-    train_dataset = TransformDataset(full_dataset, train_dataset.indices, train_transform, horizontal_flip=augment)
-    val_dataset = TransformDataset(full_dataset, val_dataset.indices, base_transform)
-    test_dataset = TransformDataset(full_dataset, test_dataset.indices, base_transform)
+    # If no validation or test split, use the full dataset without shuffling
+    if val_size == 0 and test_size == 0:
+        train_dataset = TransformDataset(full_dataset, list(range(dataset_size)), train_transform, horizontal_flip=augment)
+        val_dataset = None
+        test_dataset = None
+        print(f"Dataset split: Train: {len(train_dataset)}, Validation: 0, Test: 0")
+    else:
+        # Create random splits
+        train_dataset, val_dataset, test_dataset = random_split(
+            full_dataset, 
+            [train_size, val_size, test_size],
+            generator=torch.Generator().manual_seed(seed)
+        )
+        
+        # Create dataset wrappers with transforms
+        train_dataset = TransformDataset(full_dataset, train_dataset.indices, train_transform, horizontal_flip=augment)
+        val_dataset = TransformDataset(full_dataset, val_dataset.indices, base_transform)
+        test_dataset = TransformDataset(full_dataset, test_dataset.indices, base_transform)
+        print(f"Dataset split: Train: {len(train_dataset)}, Validation: {len(val_dataset)}, Test: {len(test_dataset)}")
     
     # Create data loaders
     train_loader = DataLoader(
         train_dataset, 
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=False,  # Disable shuffling to preserve sorted order
         num_workers=4,
         pin_memory=True,
         drop_last=True
     )
     
-    val_loader = DataLoader(
+    val_loader = None if val_dataset is None else DataLoader(
         val_dataset,
         batch_size=batch_size,
         shuffle=False,
@@ -235,7 +216,7 @@ def create_data_loaders(data_dir, batch_size=8, val_split=0.2, test_split=0.1,
         pin_memory=True
     )
     
-    test_loader = DataLoader(
+    test_loader = None if test_dataset is None else DataLoader(
         test_dataset,
         batch_size=batch_size,
         shuffle=False,
@@ -243,11 +224,7 @@ def create_data_loaders(data_dir, batch_size=8, val_split=0.2, test_split=0.1,
         pin_memory=True
     )
     
-    print(f"Dataset split: Train: {len(train_dataset)}, Validation: {len(val_dataset)}, Test: {len(test_dataset)}")
-    
     return train_loader, val_loader, test_loader
-
-
 class TransformDataset(Dataset):
     """
     Wrapper dataset that applies transforms to a subset of another dataset
@@ -451,7 +428,7 @@ def create_balanced_subset(data_dir, output_dir, bins=20, samples_per_bin=100, s
         bin_end = bin_edges[bin_idx + 1]
         
         # Shuffle and select samples
-        random.shuffle(images)
+        # random.shuffle(images)
         bin_samples = images[:samples_per_bin]
         selected_images.extend(bin_samples)
         
