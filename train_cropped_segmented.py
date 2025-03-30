@@ -479,7 +479,7 @@ def main():
             }, os.path.join(args.output_dir, f'checkpoint_epoch_{epoch+1}.pth'))
     
     
-    best_checkpoint = torch.load(os.path.join(args.output_dir, 'best_model_640x480_segmented_{timestamp}.pth'), weights_only=False)
+    best_checkpoint = torch.load(os.path.join(args.output_dir, f'best_model_640x480_segmented_{timestamp}.pth'), weights_only=False)
     model.load_state_dict(best_checkpoint['model_state_dict'])
     
     print(f"\nBest model from epoch {best_epoch+1} with validation loss {best_val_loss:.6f}")
