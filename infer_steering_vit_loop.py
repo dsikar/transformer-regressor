@@ -135,8 +135,21 @@ def predict_steering(model, img_tensor, device, mixed_precision=False, debug=Fal
                 output = model(img_tensor)
         else:
             output = model(img_tensor)
+
+    # as per /home/daniel/git/carla-driver-data/scripts/16-self-driving-quant.py
     
-    return float(output.cpu().numpy()[0, 0])
+    steering_angle = float(output.cpu().numpy()[0, 0])
+
+    # Define the quantization levels (same as in compute_control)
+    steering_levels = [round(x*0.02, 3) for x in range(-32, 33)]  # -0.64 to +0.64
+    
+    # Clamp the steering angle to the valid range first
+    clamped_angle = np.clip(steering_angle, -0.65, 0.65)
+    
+    # Quantize to nearest level
+    quantized_angle = min(steering_levels, key=lambda x: abs(x - clamped_angle))            
+    
+    return quantized_angle # float(output.cpu().numpy()[0, 0])
 
 def wait_for_file_stability(file_path, timeout=1.0, check_interval=0.05):
     """Wait until the file size stops changing or timeout is reached."""
