@@ -26,9 +26,9 @@ def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description='Train Vision Transformer for steering angle prediction')
     # Dataset parameters
-    parser.add_argument('--data_dir', type=str, default="/home/daniel/git/carla-driver-data/scripts/wip/carla_dataset_640x480_segmented/",
+    parser.add_argument('--data_dir', type=str, default="/home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_01",
                         help='Path to dataset directory')
-    parser.add_argument('--output_dir', type=str, default='/home/daniel/git/carla-driver-data/models/',
+    parser.add_argument('--output_dir', type=str, default='/home/daniel/git/neurips-2025/scripts/vit-models',
                         help='Directory to save outputs')
     parser.add_argument('--img_size', type=int, nargs=2, default=[480, 640],
                         help='Output image size after preprocessing (height, width)')
@@ -91,7 +91,7 @@ def preprocess_image(img, debug=False, debug_dir=None, idx=0):
 
     # Initial crop
     img = img[:, 210:480, :]  # Crop to 270x640 (H×W)
-        
+    # debug img[:, 259, 94] tensor([0.9961, 0.0000, 0.0000]) red fiducial, img is RGB   
     # Convert tensor to numpy for OpenCV processing (HWC format)
     img_np = img.permute(1, 2, 0).cpu().numpy()  # [H, W, C]
 
@@ -449,7 +449,7 @@ def main():
                 'train_metrics': train_metrics,
                 'val_metrics': val_metrics,
                 'val_results': val_results
-            }, os.path.join(args.output_dir, 'best_model_640x480_segmented_yuv_2.pth'))
+            }, os.path.join(args.output_dir, 'best_model_640x480_segmented_yuv_01.pth'))
             
             plot_predictions(
                 val_results['predictions'].flatten(),
@@ -480,7 +480,7 @@ def main():
                 'val_metrics': val_metrics
             }, os.path.join(args.output_dir, f'checkpoint_epoch_{epoch+1}.pth'))
     
-    best_checkpoint = torch.load(os.path.join(args.output_dir, 'best_model_640x480_segmented_yuv_2.pth'))
+    best_checkpoint = torch.load(os.path.join(args.output_dir, 'best_model_640x480_segmented_yuv_01.pth'))
     model.load_state_dict(best_checkpoint['model_state_dict'])
     
     print(f"\nBest model from epoch {best_epoch+1} with validation loss {best_val_loss:.6f}")
