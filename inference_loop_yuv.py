@@ -23,7 +23,7 @@ from model_implementation import SteeringAngleTransformer
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Real-time inference for CARLA steering prediction')
-    parser.add_argument('--model_path', type=str, default='/home/daniel/git/carla-driver-data/models/best_model_640x480_segmented_yuv_2.pth',
+    parser.add_argument('--model_path', type=str, default='/home/daniel/git/neurips-2025/scripts/vit-models/best_model_640x480_segmented_yuv_01.pth',
                         help='Path to model checkpoint (.pth) or ONNX model (.onnx)')
     parser.add_argument('--image_dir', type=str, default='/home/daniel/dev/claude-dr/transformer-regressor/input_dir/',
                         help='Directory to watch for CARLA images')
@@ -81,7 +81,7 @@ def preprocess_image(image_path, img_size, debug=False, debug_dir=None):
     image = Image.open(image_path).convert('RGB')
     
     # Convert to numpy for cropping and YUV conversion
-    img_np = np.array(image)
+    img_np = np.array(image) # img_np[479,95,:] [253   1   0] - red, the fiducial point 
     if debug:
         print(f"Loaded image shape (H, W, C): {img_np.shape}")
         # Save original image
@@ -89,7 +89,7 @@ def preprocess_image(image_path, img_size, debug=False, debug_dir=None):
         plt.imsave(os.path.join(debug_dir, f"{os.path.basename(image_path)}_original.png"), img_np)
     
     # Crop rows 210 to 480 (same as training)
-    img_np = img_np[210:480, :, :]  # Crop to 270x640 or 270x480 depending on input
+    img_np = img_np[210:480, :, :]  # Crop to 270x640 or 270x480 depending on input - RGB with red fiducial print(img_np[269, 95,:]) [254   0   0]
     if debug:
         print(f"After crop (H, W, C): {img_np.shape}")
         plt.imsave(os.path.join(debug_dir, f"{os.path.basename(image_path)}_cropped.png"), img_np)
@@ -101,7 +101,7 @@ def preprocess_image(image_path, img_size, debug=False, debug_dir=None):
     if debug:
         print(f"After YUV conversion (H, W, C): {img_yuv.shape}")
         plt.imsave(os.path.join(debug_dir, f"{os.path.basename(image_path)}_yuv.png"), img_yuv)
-    
+    # print(img_yuv[269, 95,:]) [ 76  91 255] # blue fiducial showing, incorrect, should be red.
     # Convert back to PIL for resizing
     image = Image.fromarray(img_yuv)
     
@@ -109,7 +109,7 @@ def preprocess_image(image_path, img_size, debug=False, debug_dir=None):
     preprocess = transforms.Compose([
         transforms.Resize(img_size),  # Resize to 640x480 (H×W)
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        # transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
     
     img_tensor = preprocess(image)
