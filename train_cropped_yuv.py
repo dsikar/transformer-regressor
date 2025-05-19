@@ -35,7 +35,7 @@ def parse_args():
     # Model parameters
     parser.add_argument('--patch_size', type=int, default=32,
                         help='Patch size for Vision Transformer')
-    parser.add_argument('--dim', type=int, default=384,
+    parser.add_argument('--dim', type=int, default=325,
                         help='Embedding dimension')
     parser.add_argument('--depth', type=int, default=4,
                         help='Number of transformer layers')
@@ -48,7 +48,7 @@ def parse_args():
     # Training parameters
     parser.add_argument('--batch_size', type=int, default=8,
                         help='Batch size for training')
-    parser.add_argument('--epochs', type=int, default=10,
+    parser.add_argument('--epochs', type=int, default=100,
                         help='Number of training epochs')
     parser.add_argument('--lr', type=float, default=1e-4,
                         help='Initial learning rate')
@@ -72,7 +72,7 @@ def parse_args():
                         help='Random seed for reproducibility')
     parser.add_argument('--no_cuda', action='store_true',
                         help='Disable CUDA training')
-    parser.add_argument('--debug', action='store_true', default=False,
+    parser.add_argument('--debug', action='store_true', default=True,
                         help='Enable debug mode (small subset of data and save processed images)')
     return parser.parse_args()
 
@@ -97,16 +97,19 @@ def preprocess_image(img, debug=False, debug_dir=None, idx=0):
 
     # Scale to [0, 255] and convert to uint8 for OpenCV
     img_np = (img_np * 255).astype(np.uint8)
-
+    # print(img_np[269, 95,:]) [254   0   0] # fiducial is red
     # Convert RGB to YUV
+    # invert R and B channels to get fiducial in blue
+    # STOPPED HERE, align CNN with ViT preprocessing - YUV fiducials need to be RED
+    # img_np = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)  # Convert RGB to BGR for OpenCV
     img_yuv = cv2.cvtColor(img_np, cv2.COLOR_RGB2YUV)
-
+    # print(img_yuv[269, 95,:]) [ 76  91 255] # fiducial is blue
     if debug:
         print(f"After RGB to YUV (H, W, C): {img_yuv.shape}")
         
         # Save YUV conversion (already in [0, 255])
         cv2.imwrite(os.path.join(debug_dir, f'debug_yuv_{idx}.png'), img_yuv)
-
+        # red on disk
     img_pil = transforms.ToPILImage()(img_yuv)
     
     if debug:
@@ -130,7 +133,7 @@ def preprocess_image(img, debug=False, debug_dir=None, idx=0):
         final_img = (img_tensor.permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
         cv2.imwrite(os.path.join(debug_dir, f'debug_final_{idx}.png'), 
                    cv2.cvtColor(final_img, cv2.COLOR_RGB2BGR))
-    
+    # print(img_tensor[:,479, 95]) tensor([0.2980, 0.3569, 1.0000]), fiducial is blue in YUV space
     return img_tensor
 
 # Image is already in YUV space at this point ~ loader ?
@@ -449,7 +452,7 @@ def main():
                 'train_metrics': train_metrics,
                 'val_metrics': val_metrics,
                 'val_results': val_results
-            }, os.path.join(args.output_dir, 'best_model_640x480_segmented_yuv_01.pth'))
+            }, os.path.join(args.output_dir, 'best_model_640x480_segmented_yuv_01_100_epochs.pth'))
             
             plot_predictions(
                 val_results['predictions'].flatten(),
