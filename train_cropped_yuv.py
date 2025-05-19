@@ -35,7 +35,7 @@ def parse_args():
     # Model parameters
     parser.add_argument('--patch_size', type=int, default=32,
                         help='Patch size for Vision Transformer')
-    parser.add_argument('--dim', type=int, default=325,
+    parser.add_argument('--dim', type=int, default=384,
                         help='Embedding dimension')
     parser.add_argument('--depth', type=int, default=4,
                         help='Number of transformer layers')
@@ -72,7 +72,7 @@ def parse_args():
                         help='Random seed for reproducibility')
     parser.add_argument('--no_cuda', action='store_true',
                         help='Disable CUDA training')
-    parser.add_argument('--debug', action='store_true', default=True,
+    parser.add_argument('--debug', action='store_true', default=False,
                         help='Enable debug mode (small subset of data and save processed images)')
     return parser.parse_args()
 
@@ -103,6 +103,10 @@ def preprocess_image(img, debug=False, debug_dir=None, idx=0):
     # STOPPED HERE, align CNN with ViT preprocessing - YUV fiducials need to be RED
     # img_np = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)  # Convert RGB to BGR for OpenCV
     img_yuv = cv2.cvtColor(img_np, cv2.COLOR_RGB2YUV)
+    # resize
+    img_resized = cv2.resize(img_yuv, (640, 480))  # Resize to 480x640
+    img_resized_normalized = img_resized / 255.0  # Normalize to [0, 1]
+
     # print(img_yuv[269, 95,:]) [ 76  91 255] # fiducial is blue
     if debug:
         print(f"After RGB to YUV (H, W, C): {img_yuv.shape}")
@@ -110,21 +114,22 @@ def preprocess_image(img, debug=False, debug_dir=None, idx=0):
         # Save YUV conversion (already in [0, 255])
         cv2.imwrite(os.path.join(debug_dir, f'debug_yuv_{idx}.png'), img_yuv)
         # red on disk
-    img_pil = transforms.ToPILImage()(img_yuv)
+    #img_pil = transforms.ToPILImage()(img_yuv)
     
-    if debug:
+    #if debug:
         # Save PIL image
-        img_pil.save(os.path.join(debug_dir, f'debug_pil_{idx}.png'))
+    #    img_pil.save(os.path.join(debug_dir, f'debug_pil_{idx}.png'))
 
     # Resize to original dimensions (480x640) - corrected order
-    img_resized = transforms.Resize((480, 640))(img_pil)
-    
+    # img_resized = transforms.Resize((480, 640))(img_pil)
+    # img_resized = transforms.Resize((480, 640))(img_yuv)
+
     if debug:
         # Save resized image
         img_resized.save(os.path.join(debug_dir, f'debug_resized_{idx}.png'))
     
-    # Convert back to tensor
-    img_tensor = transforms.ToTensor()(img_resized)
+    # Convert back to tensor - print(img_resized_normalized[479, 95,:]) [0.29803922 0.35686275 1.        ] - Fiducial is blue in YUV space
+    img_tensor = transforms.ToTensor()(img_resized_normalized)
     
     if debug:
         print(f"After resize and to tensor (C, H, W): {img_tensor.shape}")
